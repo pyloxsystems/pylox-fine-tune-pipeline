@@ -1,0 +1,90 @@
+# Pylox Systems — Tier 70B Premium
+# Target: latency-critical + quality-maxed workloads. H100 or DGX Spark.
+# Base: Llama 3.1 70B Instruct + LoRA + EAGLE-3
+
+tier: "70b"
+base_model: "meta-llama/Llama-3.1-70B-Instruct"
+attn_implementation: "sdpa"
+
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true
+
+lora:
+  r: 32
+  alpha: 64
+  dropout: 0.05
+  bias: "none"
+  task_type: "CAUSAL_LM"
+  use_dora: true
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  num_train_epochs: 2
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 32
+  learning_rate: 5.0e-5
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  max_seq_length: 2048
+  optim: "paged_adamw_8bit"
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  logging_steps: 10
+  save_strategy: "epoch"
+  neftune_noise_alpha: 5
+  packing: true
+
+liger_kernel:
+  enabled: false
+
+eval:
+  eval_split_ratio: 0.05
+  sample_prompts: 10
+  perplexity_baseline: true
+  llm_judge_model: "gpt-oss-120b"
+  llm_judge_endpoint: "http://localhost:8002/v1"
+
+deploy:
+  default_target: "runpod"
+  runpod:
+    gpu: "NVIDIA H100 PCIe 80GB"
+    vllm_args:
+      - "--enable-lora"
+      - "--max-lora-rank=32"
+      - "--max-loras=3"
+      - "--gpu-memory-utilization=0.90"
+      - "--enable-prefix-caching"
+      - "--quantization=compressed-tensors"
+  spark:
+    vllm_args:
+      - "--enable-lora"
+      - "--max-lora-rank=32"
+      - "--max-loras=1"
+      - "--gpu-memory-utilization=0.65"
+      - "--enforce-eager"
+      - "--enable-prefix-caching"
+  speculative:
+    enabled: true
+    draft_model: "meta-llama/Llama-3.2-1B-Instruct"
+    num_speculative_tokens: 5
+
+eagle3:
+  enabled: true
+  head_repo: "nvidia/EAGLE-3-Llama-3.1-70B"   # verify repo path on HF before first client run
+
+pricing:
+  setup_fee_usd: 15000
+  monthly_hosting_usd: 3500
+  refresh_fee_usd: 5000

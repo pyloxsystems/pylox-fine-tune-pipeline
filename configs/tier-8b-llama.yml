@@ -1,0 +1,89 @@
+# Pylox Systems — Tier 8B Standard
+# Target: most fine-tune gigs. Runs on any 16GB+ GPU.
+# Base: Llama 3.1 8B Instruct + LoRA
+
+tier: "8b"
+base_model: "meta-llama/Llama-3.1-8B-Instruct"
+attn_implementation: "sdpa"   # "flash_attention_2" or "flash_attention_3" if installed
+
+quantization:
+  load_in_4bit: true
+  bnb_4bit_quant_type: "nf4"
+  bnb_4bit_compute_dtype: "bfloat16"
+  bnb_4bit_use_double_quant: true
+
+lora:
+  r: 16
+  alpha: 32
+  dropout: 0.05
+  bias: "none"
+  task_type: "CAUSAL_LM"
+  use_dora: true                 # Weight-decomposed LoRA — better quality, built into peft
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  num_train_epochs: 3
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 16
+  learning_rate: 2.0e-4
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  max_seq_length: 2048
+  optim: "paged_adamw_8bit"
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+  logging_steps: 10
+  save_strategy: "epoch"
+  neftune_noise_alpha: 5         # NEFTune — free quality bump on instruction data
+  packing: true                  # Packed sequences for 2-3x training throughput
+
+liger_kernel:
+  enabled: false                 # Set true if Liger Kernel installed and Blackwell compatible
+
+eval:
+  eval_split_ratio: 0.05
+  sample_prompts: 10
+  perplexity_baseline: true
+  llm_judge_model: "gpt-oss-120b"
+  llm_judge_endpoint: "http://localhost:8002/v1"
+
+deploy:
+  default_target: "runpod"
+  runpod:
+    gpu: "NVIDIA L4"
+    vllm_args:
+      - "--enable-lora"
+      - "--max-lora-rank=16"
+      - "--max-loras=4"
+      - "--gpu-memory-utilization=0.85"
+      - "--enable-prefix-caching"
+  spark:
+    vllm_args:
+      - "--enable-lora"
+      - "--max-lora-rank=16"
+      - "--max-loras=8"
+      - "--gpu-memory-utilization=0.60"
+      - "--enforce-eager"
+      - "--enable-prefix-caching"
+  speculative:
+    enabled: true
+    draft_model: "meta-llama/Llama-3.2-1B-Instruct"
+    num_speculative_tokens: 5
+
+eagle3:
+  enabled: false
+  head_repo: null
+
+pricing:
+  setup_fee_usd: 3000
+  monthly_hosting_usd: 800
+  refresh_fee_usd: 1500

@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+
+# Pipeline runtime artifacts
+clients/
+deploy/runs/
+ops/keys.db
+
+# Model weights / datasets (never commit)
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+*.engine
+*.gguf
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+.env.*
+*.env.secret
+
+# Temp
+/tmp/
+.cache/
