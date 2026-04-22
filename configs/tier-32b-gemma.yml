@@ -13,12 +13,14 @@ quantization:
   bnb_4bit_use_double_quant: true
 
 lora:
-  r: 32
-  alpha: 64
-  dropout: 0.05
+  # 32B benefits from higher rank — bumped to 64. Adapter ≈ 350 MB.
+  # alpha = 2*r convention.
+  r: 64
+  alpha: 128
+  dropout: 0.1
   bias: "none"
   task_type: "CAUSAL_LM"
-  use_dora: true
+  use_dora: false                # vLLM hot-swap compatibility for multi-tenant
   target_modules:
     - q_proj
     - k_proj
@@ -62,16 +64,18 @@ deploy:
     gpu: "NVIDIA L40S"
     vllm_args:
       - "--enable-lora"
-      - "--max-lora-rank=32"
-      - "--max-loras=6"
+      - "--max-lora-rank=64"
+      - "--max-loras=4"               # L40S 48GB headroom
+      - "--max-cpu-loras=16"
       - "--gpu-memory-utilization=0.85"
       - "--enable-prefix-caching"
       - "--quantization=compressed-tensors"
   spark:
     vllm_args:
       - "--enable-lora"
-      - "--max-lora-rank=32"
-      - "--max-loras=4"
+      - "--max-lora-rank=64"
+      - "--max-loras=8"               # 32B + 8 LoRAs in 128GB Spark
+      - "--max-cpu-loras=32"
       - "--gpu-memory-utilization=0.55"
       - "--enforce-eager"
       - "--enable-prefix-caching"

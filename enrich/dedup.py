@@ -87,8 +87,13 @@ def dedup_file(
         dup_path.write_text("")
         return {"total": 0, "kept": 0, "duplicates": 0}
 
-    log.info(f"Loading embedding model: {model_name}")
-    model = SentenceTransformer(model_name, trust_remote_code=True)
+    # Run on CPU by default — avoids CUDA OOM when gpt-oss-120b is loaded in
+    # parallel. Nomic v1.5 (~550MB) encodes ~100 docs/sec on CPU, which is
+    # fine for typical client corpora. If you need GPU dedup, unload gpt-oss
+    # first and set device="cuda" manually.
+    device = "cpu"
+    log.info(f"Loading embedding model on {device}: {model_name}")
+    model = SentenceTransformer(model_name, trust_remote_code=True, device=device)
 
     log.info(f"Embedding {len(rows)} rows...")
     texts = [_row_text(r) for r in rows]

@@ -120,7 +120,7 @@ def train(
         lr_scheduler_type=t["lr_scheduler_type"],
         warmup_ratio=t["warmup_ratio"],
         weight_decay=t["weight_decay"],
-        max_seq_length=t["max_seq_length"],
+        max_length=t["max_seq_length"],
         optim=t["optim"],
         gradient_checkpointing=t["gradient_checkpointing"],
         gradient_checkpointing_kwargs=t.get("gradient_checkpointing_kwargs", {}),
@@ -140,7 +140,7 @@ def train(
         args=sft_config,
         train_dataset=ds,
         peft_config=_lora_config(cfg),
-        tokenizer=tokenizer,
+        processing_class=tokenizer,  # TRL 1.x renamed tokenizer -> processing_class
     )
 
     log.info(f"Starting training — {len(ds)} examples, {t['num_train_epochs']} epochs")

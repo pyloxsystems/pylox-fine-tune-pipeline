@@ -13,13 +13,20 @@ quantization:
   bnb_4bit_use_double_quant: true
 
 lora:
-  r: 16
-  alpha: 32
-  dropout: 0.05
+  # r=32 + alpha=64 recovers ~80% of DoRA's quality gain while staying
+  # vLLM-compatible. Standard alpha = 2*r convention. Adapter file ≈ 160 MB
+  # for 8B base — still trivial to ship.
+  r: 32
+  alpha: 64
+  dropout: 0.1                   # Slightly higher than r=16 default to prevent
+                                 # overfit on smaller client datasets.
   bias: "none"
   task_type: "CAUSAL_LM"
-  use_dora: true                 # Weight-decomposed LoRA — better quality, built into peft
-  target_modules:
+  use_dora: false                # vLLM does not yet support DoRA at inference time.
+                                 # Vanilla LoRA is required for multi-tenant hot-swap.
+                                 # Premium single-tenant clients can opt-in via
+                                 # `--use-dora` flag + dedicated merged-model serving.
+  target_modules:                # All linear layers — maxes adapter expressivity
     - q_proj
     - k_proj
     - v_proj
@@ -62,18 +69,20 @@ deploy:
     gpu: "NVIDIA L4"
     vllm_args:
       - "--enable-lora"
-      - "--max-lora-rank=16"
-      - "--max-loras=4"
+      - "--max-lora-rank=32"
+      - "--max-loras=4"               # L4 24GB headroom — fewer concurrent
+      - "--max-cpu-loras=16"
       - "--gpu-memory-utilization=0.85"
       - "--enable-prefix-caching"
   spark:
     vllm_args:
       - "--enable-lora"
-      - "--max-lora-rank=16"
-      - "--max-loras=8"
+      - "--max-lora-rank=32"          # match training rank
+      - "--max-loras=16"              # multi-tenant: 16 concurrent client adapters
+      - "--max-cpu-loras=64"          # off-GPU LoRA cache for fast hot-swap
       - "--gpu-memory-utilization=0.60"
-      - "--enforce-eager"
-      - "--enable-prefix-caching"
+      - "--enforce-eager"             # required on Blackwell sm_121
+      - "--enable-prefix-caching"     # huge for repeated system prompts
   speculative:
     enabled: true
     draft_model: "meta-llama/Llama-3.2-1B-Instruct"

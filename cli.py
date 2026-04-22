@@ -15,6 +15,10 @@ Commands:
 """
 from __future__ import annotations
 
+# CUDA runtime compat MUST happen before any heavy imports — re-execs the
+# process with proper LD_LIBRARY_PATH if not already set.
+import ops.cuda_compat   # noqa: F401
+
 import json
 import logging
 import sys

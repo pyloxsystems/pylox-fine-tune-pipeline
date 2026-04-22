@@ -13,12 +13,13 @@ quantization:
   bnb_4bit_use_double_quant: true
 
 lora:
-  r: 32
-  alpha: 64
-  dropout: 0.05
+  # 70B with r=64 — premium tier, premium quality. Adapter ≈ 700 MB.
+  r: 64
+  alpha: 128
+  dropout: 0.1
   bias: "none"
   task_type: "CAUSAL_LM"
-  use_dora: true
+  use_dora: false                # vLLM hot-swap compatibility
   target_modules:
     - q_proj
     - k_proj
@@ -62,16 +63,18 @@ deploy:
     gpu: "NVIDIA H100 PCIe 80GB"
     vllm_args:
       - "--enable-lora"
-      - "--max-lora-rank=32"
+      - "--max-lora-rank=64"
       - "--max-loras=3"
+      - "--max-cpu-loras=12"
       - "--gpu-memory-utilization=0.90"
       - "--enable-prefix-caching"
       - "--quantization=compressed-tensors"
   spark:
     vllm_args:
       - "--enable-lora"
-      - "--max-lora-rank=32"
-      - "--max-loras=1"
+      - "--max-lora-rank=64"
+      - "--max-loras=2"               # 70B fits maybe 2 clients on Spark
+      - "--max-cpu-loras=8"
       - "--gpu-memory-utilization=0.65"
       - "--enforce-eager"
       - "--enable-prefix-caching"
