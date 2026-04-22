@@ -3,7 +3,7 @@
 # Base: Gemma 3 27B + LoRA + EAGLE-3
 
 tier: "32b"
-base_model: "google/gemma-3-27b-it"
+base_model: "Qwen/Qwen3-32B"
 attn_implementation: "sdpa"
 
 quantization:
@@ -81,7 +81,7 @@ deploy:
       - "--enable-prefix-caching"
   speculative:
     enabled: true
-    draft_model: "google/gemma-3-1b-it"
+    draft_model: "Qwen/Qwen2.5-1.5B-Instruct"
     num_speculative_tokens: 5
 
 eagle3:

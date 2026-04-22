@@ -1,0 +1,47 @@
+# Example ad-hoc benchmark config
+#
+# Drop YAML files in this directory to add custom benchmarks.
+#
+# Naming conventions:
+#   EXAMPLE.yml           → skipped (starts with EXAMPLE)
+#   global-<name>.yml     → applies to ALL clients automatically
+#   client-<slug>-<name>  → applies ONLY to that client automatically
+#
+# You can also pass files explicitly with:
+#   python3 cli.py benchmark --client X --extra path/to/mytest.yml
+
+name: example-legal-clause-qa
+description: Example custom benchmark — delete or copy this file
+
+# Data source (pick ONE):
+#   - Local JSONL file with fields matching your prompt_template
+#   - HuggingFace dataset name with "huggingface:<name>" prefix
+#   - Inline list
+dataset: /tmp/legal_qa_synthetic.jsonl
+# dataset: huggingface:theatticusproject/cuad-qa
+# dataset:
+#   - {context: "A contract...", question: "Is this clause enforceable?", answer: "Yes, because..."}
+
+# Optional cap to keep runtime reasonable
+sample_size: 50
+
+# Optional split for HF datasets (default: test)
+# split: test
+
+# Prompt template — use {field_name} to pull from each row
+prompt_template: |
+  Review this contract excerpt:
+  {Context}
+
+  Question: what are the key obligations?
+
+# Max tokens to generate per response
+max_tokens: 200
+
+# Scoring method (pick ONE):
+#   exact_match  — string equality (case-insensitive)
+#   substring    — expected text appears in response
+#   llm_judge    — gpt-oss-120b grades as 0 or 1
+metric:
+  type: llm_judge
+  answer_field: Response      # field name in each row holding the reference answer

@@ -167,6 +167,23 @@ def ensure_stopped() -> bool:
 
     log.info(f"Stopping {CONTAINER_NAME} to free memory...")
 
+    # Step 0: passwordless sudo wrapper (installed via /etc/sudoers.d/pylox-kill).
+    # This is the reliable path — the wrapper script has root and knows exactly
+    # which PIDs to SIGKILL for this specific container.
+    try:
+        result = subprocess.run(
+            ["sudo", "-n", "/usr/local/bin/kill-trtllm-pids"],
+            timeout=30, capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            log.info(f"trtllm-eagle3 terminated via sudo wrapper: {result.stdout.strip()}")
+            time.sleep(5)          # UMA allocator drain
+            PID_TRACKER.unlink(missing_ok=True)
+            return True
+        log.warning(f"sudo wrapper returned {result.returncode}: {result.stderr.strip()}")
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        log.warning(f"sudo wrapper failed: {e}")
+
     # Step 1: kill tracked PIDs (works even when docker can't reach the container)
     if _kill_tracked_pids():
         # Wait for docker to notice

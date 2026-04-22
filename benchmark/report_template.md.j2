@@ -1,0 +1,164 @@
+# Model Performance Report — {{ client }}
+
+**Pylox Forge** — on-prem LLM fine-tuning and deployment
+Delivered {{ timestamp }}
+
+---
+
+## Executive summary
+
+| Metric | Value |
+|---|---|
+| Throughput | **{{ perf_throughput or "—" }} tok/s** (sustained) |
+| TTFT p50 | {{ perf_ttft_p50 or "—" }} ms |
+| TTFT p95 | {{ perf_ttft_p95 or "—" }} ms |
+| Fine-tune quality | {{ judge_finetune_pct or "—" }} win rate vs base |
+| Cost per 1M output tokens | **${{ self_hosted_cost or "—" }}** (vs ${{ openai_cost or "2.50" }} OpenAI) |
+| Savings factor | **{{ cost_savings_factor or "—" }}× cheaper** than OpenAI gpt-4o |
+
+{% if judge_finetune_pct and judge_finetune_pct >= 60 %}
+**Result:** Fine-tuned model demonstrates clear domain improvement over the base
+model while preserving general intelligence. Ready for production deployment.
+{% elif judge_finetune_pct %}
+**Result:** Fine-tuned model performs comparably to base. Consider reviewing
+training dataset quality or hyperparameters for this vertical.
+{% endif %}
+
+---
+
+## Deployment
+
+- **Model:** `{{ base_model }}` + client LoRA adapter
+- **Tier:** {{ tier }}
+- **Endpoint:** `{{ endpoint }}`
+- **Adapter file:** `{{ adapter_path }}`
+
+---
+
+## General intelligence (academic benchmarks)
+
+{% if academic and academic.get("tasks") %}
+Preservation check — fine-tuning should not damage general capabilities.
+
+| Benchmark | Score | Interpretation |
+|---|---|---|
+{% for task_id, data in academic.tasks.items() %}
+| {{ data.display_name }} | {{ (data.score * 100) | round(1) if data.score else "n/a" }}% | {{ data.sample_size }} samples |
+{% endfor %}
+
+*Benchmarks run via lm-evaluation-harness on held-out test sets.*
+{% else %}
+*Academic benchmarks: {{ academic.error if academic else "skipped" }}*
+{% endif %}
+
+---
+
+## Domain-specific performance
+
+{% if domain and domain.get("results") %}
+Domain detected: **{{ domain.detected_domain }}**
+
+{% for suite_name, suite_data in domain.results.items() %}
+### {{ suite_name }}
+{% if suite_data.get("tasks") %}
+| Task | Score |
+|---|---|
+{% for task_id, data in suite_data.tasks.items() %}
+| {{ data.display_name or task_id }} | {{ (data.score * 100) | round(1) if data.score else "n/a" }}% |
+{% endfor %}
+{% else %}
+*{{ suite_data.get("error", "no data") }}*
+{% endif %}
+{% endfor %}
+{% elif domain and domain.get("note") %}
+*{{ domain.note }}*
+{% endif %}
+
+---
+
+## LLM-as-judge evaluation
+
+{% if llm_judge and not llm_judge.get("error") %}
+Independent judge (gpt-oss-120b) compared fine-tune vs base on {{ llm_judge.get("samples_tested", llm_judge.get("total", 0)) }} domain-specific prompts.
+
+| Outcome | Count | Rate |
+|---|---|---|
+| Fine-tune wins | {{ llm_judge.finetune_wins }} | **{{ (llm_judge.finetune_win_rate * 100) | round(1) }}%** |
+| Base wins | {{ llm_judge.base_wins }} | {{ (llm_judge.base_win_rate * 100) | round(1) }}% |
+| Ties | {{ llm_judge.ties }} | {{ (llm_judge.tie_rate * 100) | round(1) }}% |
+
+*Position bias controlled by randomized A/B ordering.*
+{% else %}
+*LLM judge: {{ llm_judge.error if llm_judge else "skipped" }}*
+{% endif %}
+
+---
+
+## Performance & latency
+
+{% if performance and not performance.get("error") %}
+### Time-to-first-token (TTFT)
+| Percentile | Latency |
+|---|---|
+| p50 | {{ performance.ttft_ms.p50 or "n/a" }} ms |
+| p95 | {{ performance.ttft_ms.p95 or "n/a" }} ms |
+| Mean | {{ performance.ttft_ms.mean or "n/a" }} ms |
+
+### Throughput
+| Metric | Value |
+|---|---|
+| Single-request mean | {{ performance.throughput_tok_s.single_mean or "n/a" }} tok/s |
+| Single-request peak | {{ performance.throughput_tok_s.single_max or "n/a" }} tok/s |
+| Concurrent (batch 8) | {{ performance.throughput_tok_s.concurrent_batch_8 or "n/a" }} tok/s aggregate |
+
+### Total request latency (150-token responses)
+| Percentile | Latency |
+|---|---|
+| p50 | {{ performance.latency_ms.p50 or "n/a" }} ms |
+| p95 | {{ performance.latency_ms.p95 or "n/a" }} ms |
+| p99 | {{ performance.latency_ms.p99 or "n/a" }} ms |
+{% else %}
+*Performance: {{ performance.error if performance else "skipped" }}*
+{% endif %}
+
+---
+
+## Cost comparison
+
+{% if cost and not cost.get("error") %}
+**Self-hosted cost per 1M output tokens: ${{ cost.self_hosted_per_1m_usd }}**
+
+| Provider | $/1M tokens (output) | Multiplier |
+|---|---|---|
+{% for p in cost.cloud_comparison %}
+| {{ p.provider }} | ${{ p.output_per_1m }} | **{{ p.vs_self_hosted_factor }}× more expensive** |
+{% endfor %}
+
+*{{ cost.notes }}*
+{% else %}
+*Cost comparison: no data*
+{% endif %}
+
+---
+
+## Ad-hoc benchmarks
+
+{% if extra %}
+{% for e in extra %}
+- **{{ e.name }}**: {{ (e.score * 100) | round(1) if e.get("score") is not none else "error" }}% ({{ e.samples or 0 }} samples) {% if e.description %}— {{ e.description }}{% endif %}
+{% endfor %}
+{% else %}
+*None configured.*
+{% endif %}
+
+---
+
+## How this report was generated
+
+- Benchmarks run by the Pylox Forge pipeline against the live deployment endpoint
+- Academic tests: `lm-evaluation-harness` (EleutherAI)
+- Domain tests: `LegalBench` / `MedQA` / `FinanceBench` / `HumanEval` as appropriate
+- LLM judge: local `gpt-oss-120b` (no third-party API touched)
+- All client data stayed on Pylox hardware
+
+*Reproducible — all inputs saved at `clients/{{ client }}/benchmark/results.json`.*

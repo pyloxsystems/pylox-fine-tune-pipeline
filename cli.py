@@ -238,6 +238,51 @@ def teardown(client: str) -> None:
 
 
 @cli.command()
+@click.option("--client", required=True)
+@click.option("--extra", "extra_files", type=click.Path(exists=True, path_type=Path), multiple=True,
+              help="Ad-hoc benchmark YAML to add. Can be passed multiple times.")
+@click.option("--skip-academic", is_flag=True)
+@click.option("--skip-domain", is_flag=True)
+@click.option("--skip-performance", is_flag=True)
+@click.option("--skip-judge", is_flag=True)
+def benchmark(
+    client: str,
+    extra_files: tuple[Path, ...],
+    skip_academic: bool,
+    skip_domain: bool,
+    skip_performance: bool,
+    skip_judge: bool,
+) -> None:
+    """Run the full benchmark suite on a deployed client model.
+
+    Produces clients/{client}/benchmark/report.md.
+    """
+    state = read_client_state(client)
+    if not state.get("adapter_path"):
+        raise click.ClickException(f"Client {client} has no adapter. Run `train` first.")
+    if not state.get("endpoint"):
+        raise click.ClickException(f"Client {client} not deployed. Run `deploy` first.")
+
+    config = load_tier_config(state["tier"])
+    from benchmark.runner import run_all
+    report_path = run_all(
+        client_slug=client,
+        tier_cfg=config,
+        client_dir=client_dir(client),
+        endpoint=state["endpoint"],
+        base_model=config["base_model"],
+        adapter_path=Path(state["adapter_path"]),
+        extra_benchmark_files=list(extra_files) if extra_files else None,
+        skip_academic=skip_academic,
+        skip_domain=skip_domain,
+        skip_performance=skip_performance,
+        skip_judge=skip_judge,
+    )
+    write_client_state(client, benchmark_done=True, benchmark_report=str(report_path))
+    console.print(f"[bold green]✓[/bold green] Benchmark report: [cyan]{report_path}[/cyan]")
+
+
+@cli.command()
 @click.option("--client", required=False, help="If omitted, list all clients.")
 def status(client: Optional[str]) -> None:
     """Show state of one client or all clients."""
