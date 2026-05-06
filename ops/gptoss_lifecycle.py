@@ -7,7 +7,7 @@ This is conservative by default — any model load unloads gpt-oss-120b first,
 regardless of size. Avoids surprise OOMs when gpt-oss + training model + KV
 cache all want the same 110 GiB pool.
 
-Container name: `trtllm-eagle3` (matches /home/fenexpertai/trtllm-eagle3/start.sh)
+Container name: `trtllm-eagle3` (start script path is configurable; see START_SCRIPT).
 """
 from __future__ import annotations
 
@@ -15,13 +15,20 @@ import logging
 import subprocess
 import time
 from pathlib import Path
+import os
 
 import httpx
 
 log = logging.getLogger(__name__)
 
 CONTAINER_NAME = "trtllm-eagle3"
-START_SCRIPT = Path("/home/fenexpertai/trtllm-eagle3/start.sh")
+# Override with env: PYLOX_TRTLLM_START_SCRIPT=/path/to/start.sh
+START_SCRIPT = Path(
+    os.environ.get(
+        "PYLOX_TRTLLM_START_SCRIPT",
+        str(Path.home() / "trtllm-eagle3" / "start.sh"),
+    )
+)
 HEALTH_URL = "http://localhost:8002/v1/models"
 
 # We track PIDs of trtllm-serve process(es) at startup. On Spark, the container
