@@ -201,6 +201,6 @@ Without these, the pipeline runs in "dev mode" — skips billing/DNS, uses local
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+PolyForm-Noncommercial-1.0.0 — see [LICENSE](LICENSE).
 
 Copyright © 2026 Emilio Girard / Pylox Systems.
